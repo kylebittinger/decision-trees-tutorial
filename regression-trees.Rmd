@@ -1,0 +1,91 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(tree)
+library(ca)
+library(pheatmap)
+```
+
+Ultimate Halloween Candy Power Ranking data from fivethirtyeight
+https://github.com/fivethirtyeight/data
+
+```{r message=FALSE}
+candy <- read_csv("candy-data.csv")
+candy_noname <- candy %>% 
+  select(-competitorname)
+```
+
+```{r}
+candy_noname %>%
+  ggplot(aes(x=sugarpercent, y=winpercent)) +
+  geom_smooth(method="lm") +
+  geom_point() +
+  theme_bw()
+```
+
+```{r}
+candy %>% 
+  lm(winpercent ~ sugarpercent, data=.) %>%
+  summary()
+```
+
+```{r}
+candy_tree <- tree(winpercent ~ ., data=candy_noname)
+summary(candy_tree)
+```
+
+```{r}
+pdf("candy_tree1.pdf", height=7, width=7)
+plot(candy_tree)
+text(candy_tree, cex = 0.75)
+dev.off()
+```
+
+```{r}
+set.seed(1)
+candy_tree_cv <- cv.tree(candy_tree)
+plot(candy_tree_cv)
+```
+
+```{r}
+candy_tree_cv_data <- as_data_frame(unclass(candy_tree_cv))
+candy_tree_cv_data %>% 
+  ggplot() +
+  geom_point(aes(x=size, y=dev)) +
+  scale_x_continuous(breaks = 1:10) +
+  theme_bw()
+```
+
+
+```{r}
+candy_tree_2 = prune.tree(candy_tree, best = 2)
+plot(candy_tree_2)
+text(candy_tree_2, cex = 0.75)
+```
+
+```{r}
+candy_tree_3 = prune.tree(candy_tree, best = 8)
+pdf("candy_tree3.pdf", height = 6, width = 6)
+plot(candy_tree_3)
+text(candy_tree_3, cex = 0.75)
+dev.off()
+```
+
+```{r}
+candy %>%
+  mutate(chocolate = factor(chocolate)) %>%
+  mutate(predwin = predict(candy_tree_3, candy_noname)) %>%
+  ggplot() +
+  geom_point(aes(x=winpercent, y=predwin, color=chocolate)) +
+  theme_bw()
+```
+
+```{r}
+candy %>%
+  filter(chocolate == 0, fruity == 0)
+```
+

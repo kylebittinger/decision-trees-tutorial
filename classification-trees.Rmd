@@ -1,0 +1,58 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggsci)
+library(tree)
+```
+
+```{r}
+swabs <- read_csv("top_swab_taxa.csv") %>%
+  rename(Taxon = TaxonLabel) %>%
+  mutate(SubjectID = sub("Subject", "Subj", SubjectID)) %>%
+  mutate(Taxon = sub("^(.+) ", "", Taxon)) %>%
+  mutate(SubjectID = factor(SubjectID))
+```
+
+```{r}
+swabs %>%
+  ggplot() +
+  geom_col(aes(x=SampleID, y=Proportion, fill=Taxon)) +
+  facet_grid(SubjectID ~ ., scales="free") +
+  scale_fill_d3(palette="category20") +
+  coord_flip() +
+  theme_bw()
+```
+
+
+```{r}
+swabs_wide <- swabs %>% 
+  spread(Taxon, Proportion)
+swab_control <- tree.control(nrow(swabs_wide), 2, 4)
+swab_tree <- tree(
+  SubjectID ~ . - SampleID, 
+  data = swabs_wide)
+```
+
+```{r}
+plot(swab_tree)
+text(swab_tree, cex=0.75)
+```
+```{r}
+swabs_pred <- swabs_wide %>%
+  select(SampleID, SubjectID) %>%
+  cbind(predict(swab_tree)) %>%
+  gather(Prediction, Probability, -SampleID, -SubjectID)
+swabs_pred %>%
+  mutate(Prediction = paste("Prediction =", Prediction)) %>%
+  mutate(SubjectID = paste("Source =", SubjectID)) %>%
+  ggplot() +
+  geom_point(aes(x=SampleID, y=Probability, color=SubjectID)) +
+  facet_grid(SubjectID ~ Prediction, scales="free_y") +
+  coord_flip() +
+  theme_bw()
+```
+

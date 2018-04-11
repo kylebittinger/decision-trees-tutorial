@@ -1,0 +1,44 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(FNN)
+library(tree)
+```
+
+
+```{r}
+set.seed(1)
+flats <- data_frame(x = seq(1, 10, 0.1)) %>%
+  mutate(
+    y = rnorm(length(x), sd=0.6) + 
+      ifelse(x > 3, 1, 0) + 
+      ifelse((x > 7) & (x < 9), -2, 0))
+```
+
+```{r}
+flats %>%
+  ggplot() +
+  geom_point(aes(x=x, y=y))
+```
+
+```{r}
+flats_knn <- knn.reg(train = flats$x, y = flats$y, k=10)
+flats %>%
+  mutate(ypred = flats_knn$pred) %>%
+  gather(Source, Value, -x) %>%
+  ggplot(aes(x=x, y=Value, color=Source)) +
+  geom_point()
+```
+
+
+```{r}
+flats_tree <- tree(y ~ x, data=flats)
+plot(flats_tree)
+text(flats_tree)
+```
+
+
